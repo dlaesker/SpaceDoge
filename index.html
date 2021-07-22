@@ -89,7 +89,7 @@
 				
 			// Setting up the canvases and other data
 			backgroundImg = new Image();
-			backgroundImg.src = "/background.jpg";
+			backgroundImg.src = "../background.jpg";
 			ctx.drawImage(backgroundImg, 0, 0, canvas.width, canvas.height);
 			
 			scoreCtx.fillStyle = "#3B3561";
@@ -101,8 +101,8 @@
 		
 			player_img = new Image();
 			coin_image = new Image();
-			player_img.src = "/player2.png";
-			coin_image.src = "/coin.png";
+			player_img.src = "../player2.png";
+			coin_image.src = "../coin.png";
 			
 			player = new Doge(canvas.width/2, canvas.height/2, 60, 60, player_img);
 			player.draw();
