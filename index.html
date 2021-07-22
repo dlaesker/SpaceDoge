@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="description" content="Doge Ticker with a surprise.">
+<meta name="keywords" content="Doge, HTML, CSS, JavaScript">
+<meta name="author" content="Denis Laesker">
+<title>SpaceDoge</title>
+	<style>
+		* {margin: 0; padding: 0;}
+		body{ background-color: black; }
+		div { text-align: center; margin: 1em auto 1em auto; }
+		canvas { cursor: none; }
+		
+		#introduction {
+			text-align: left;
+			color: #D1D1D1;
+			width: 800px;
+			margin: 1em auto 0 auto;
+			font-size: 20px;
+		}
+		
+		#introduction a {color: #D1D1D1;}
+		
+		.header,
+		.footer {
+			width: 800px;
+			text-align: center;
+			background-color: #3B3561;
+			height: 4em;
+			line-height: 4em;
+			
+			border-radius: 1%;
+			color: #D1D1D1;
+		}
+		
+	</style>
+	<script>
+		// WazirX Public Rest API
+		// https://github.com/WazirX/wazirx-api
+		const WazirXUrl = 'https://nitinr-cors.herokuapp.com/https://api.wazirx.com/api/v2/tickers/dogeusdt';
+	
+		var canvas = null;					// Main canvas
+		var ctx = null;
+		var scoreCanvas = null;			// Scoreboard Canvas
+		var scoreCtx = null;
+		
+		var player_img = null;			// Image pointers
+		var coin_image = null;
+		var backgroundImg = null;
+		
+		var WazirXResponse = null;	// To hold the API's response
+		
+		var score = 0;							// To keep track of the score
+		
+		var player = null;					// One player, multiple coins. Not a bad situation, isn't it?
+		var coins = [];
+		
+		// Constants
+		const MAX_SPEED = 5.0;
+		const MAX_COINS = 10;
+		
+		// Objects
+		// The same object is used for the player and coins.
+		var Doge = function(x, y, w, h, img){
+			this.x = x;
+			this.y = y;
+			this.dy = (Math.random() * MAX_SPEED) + 1.0;
+			this.w = w;
+			this.h = h;
+			this.img = img;
+		}
+		
+		Doge.prototype.draw = function(){
+			ctx.drawImage(this.img, this.x, this.y, this.w, this.h);
+		}
+		
+		Doge.prototype.update = function(){	// Updates the position of the coin
+			this.y += this.dy;
+		}
+				
+		window.onload = function(){
+			// Retrieve canvases and their respective contexts.
+			canvas = document.getElementById("cv");
+			ctx = canvas.getContext("2d");
+	
+			scoreCanvas = document.getElementById("scoreboard");
+			scoreCtx = scoreCanvas.getContext("2d");
+				
+			// Setting up the canvases and other data
+			backgroundImg = new Image();
+			backgroundImg.src = "background.jpg";
+			ctx.drawImage(backgroundImg, 0, 0, canvas.width, canvas.height);
+			
+			scoreCtx.fillStyle = "#3B3561";
+			scoreCtx.fillRect(0, 0, canvas.width, canvas.height);
+		
+			scoreCtx.fillStyle = "blue";
+			scoreCtx.font = "25px Georgia";
+			scoreCtx.fillText("Score: " + score.toString(), 0, scoreCanvas.height/2);
+		
+			player_img = new Image();
+			coin_image = new Image();
+			player_img.src = "player2.png";
+			coin_image.src = "coin.png";
+			
+			player = new Doge(canvas.width/2, canvas.height/2, 60, 60, player_img);
+			player.draw();
+			
+			// Make first call to the WazirX API
+			fetch(WazirXUrl).then(function(response) {
+				return response.json();
+			}).then(function(data) {
+				WazirXResponse = data;
+			}).catch(function() {
+				console.log("Booo");
+			});
+
+			// The mouse controls the Doge
+			document.addEventListener("mousemove", mouseMoveHandler, false);
+		
+			setInterval(draw, 10);
+			
+			//No need to update the price too often.
+			setInterval(getDogePrice, 1000);
+		}
+		
+		function getDogePrice(){
+			fetch(WazirXUrl).then(function(response) {
+				return response.json();
+			}).then(function(data) {
+				WazirXResponse = data;
+			}).catch(function() {
+				console.log("Booo");
+			});
+		}
+		
+		// Updates the canvases
+		function draw(){
+			updateCoins();
+			ctx.drawImage(backgroundImg, 0, 0, canvas.width, canvas.height);
+			
+			scoreCtx.fillStyle = "#3B3561";
+			scoreCtx.fillRect(0, 0, canvas.width, canvas.height);
+
+			scoreCtx.fillStyle = "#D1D1D1";
+			scoreCtx.font = "25px Georgia";
+			
+			// Updating the scoreboard with the score, and the buy, low, and high Doge prices.
+			var yOffset = scoreCanvas.height/2;
+			scoreCtx.fillText("Score: " + score.toString(), 20, 5 + yOffset);
+			if(WazirXResponse){ // If the data is available
+				scoreCtx.font = "20px Georgia";
+				
+				var xOffset = scoreCanvas.width/2 + 2*30;
+				scoreCtx.fillText(
+					" buy: " + WazirXResponse['ticker']['buy'], xOffset + 180, yOffset - 25
+				);
+				
+				scoreCtx.fillText(
+					" low: " + WazirXResponse['ticker']['low'], xOffset + 180, yOffset + 5
+				);
+				
+				scoreCtx.fillText(
+					"high: " + WazirXResponse['ticker']['high'], xOffset + 180, yOffset + 35
+				);
+			}
+		
+			player.draw();	// Redraw the player
+			
+			// Redraw the coins
+			for(var i = 0; i < coins.length; ++i){
+				coins[i].update();
+				coins[i].draw();
+			}
+		}
+		
+		
+		// Update the position of the player based on mousemove
+		// The mouse pointer sits at the center of the Player
+		function mouseMoveHandler(e){
+			var relativeX = e.clientX - canvas.offsetLeft;
+			if(relativeX > (0 + player.w/2) && relativeX < (canvas.width - player.w/2))
+				player.x = relativeX - player.w/2;
+				
+			var relativeY = e.clientY - canvas.offsetTop;
+			if(relativeY > (0 + player.h/2) && relativeY < canvas.height - player.h/2)
+				player.y = relativeY  - player.h/2;
+			
+		}
+		
+		
+		function updateCoins(){
+			leftOffY = player.y - player.h/2;
+			leftOffX = player.x - player.w/2;
+			
+			rightOffY = player.y + player.h/2;
+			rightOffX = player.x + player.w/2;
+			
+			for(var i = 0; i < coins.length; ++i){
+				// If the coin is within the player's bounds...
+				if(	(coins[i].y >= leftOffY && coins[i].y <= rightOffY) &&
+						(coins[i].x >= leftOffX && coins[i].x <= rightOffX)){
+						coins.splice(i, 1);	// Remove it
+						score += 1;					// Increase the score
+				}else if(coins[i].y >= canvas.height){
+					coins.splice(i, 1);		// The coin is outside the canvas, remove it.
+				}
+			}
+				
+			// Add a new coin if the max number of coins has not been reached.
+			if(coins.length < MAX_COINS){
+				var x = Math.random() * canvas.width;
+				var y = -10;
+				coins.push(new Doge(x, y, 40, 40, coin_image));
+			}
+		}
+	</script>
+</head>
+
+<body>
+<div class="header"><h1>SpaceDoge</h1></div>
+<div id="introduction">
+	<p>This is what I came up with in order to learn Javascript. Considering DogeCoin is quite popular, I believe this was a good choice for a project. Please be ready to embark on a space journey as you, SpaceDoge, must collect all the dogecoin in space. </p>
+	<br>
+	<p>The background image can be found <a href="https://unsplash.com/photos/rCbdp8VCYhQ?utm_source=unsplash&utm_medium=referral&utm_content=creditShareLink">here</a>. The "player" is contolled using the mouse and your job is to collect the coins that are in free fall; the score is updated as you collect them. The dogecoin price information is retrieved using the <a href="https://github.com/WazirX/wazirx-api">WazirX Public Rest API</a>. Of course, use at your own risk. I am not responsible for whatever the outcome is. However, you are more than welcome to <a href="mailto: dlaesker@gmail.com">email</a> me with questions.</p>
+	<br>
+	<p>Kind regards,</p>
+	<p>-Denis Laesker</p>
+</div>
+<div><canvas id="scoreboard" width="800" height="100">
+	Your browser does not support the canvas element.
+</canvas></div>
+<div><canvas id="cv" width="800" height="600"></canvas></div>
+<div class="footer"><p>Denis Laesker &copy; 2021.</p></div>
+</body>
+</html>
